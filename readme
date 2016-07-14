@@ -1,0 +1,49 @@
+Worms game
+
+This program implements a version of the "Worms" arcade game, using ncurses.
+Programming Issues
+
+Programming issues are here divided into three sections - game logic, curses specific issues, and UNIX signal handling.
+Game logic
+
+The object of the game is to:
+
+    direct the worm to collect worm food, whilst
+    avoiding hitting anything else (including yourself)
+
+The controls are:
+
+    Left arrow or 'g' to direct the worm left
+    Right arrow or 'j' to direct the worm right
+    Up arrow or 'y' to direct the worm up
+    Down arrow or 'n' to direct the worm down
+    'q' to quit
+
+The program sets up a timer to send a SIGALRM signal at a specified interval. Every time this signal is received, the worm is moved. The current direction of the worm is stored in a global variable.
+
+The worm is represented as a linked list, typedef'd to WORM. Every time the SIGALRM signal is received:
+
+    The next position of the worm's head is calculated using the stored direction
+    That position is checked to see whether the worm has run into a wall, itself, or some food.
+    If the worm has run into itself or a wall, the game ends.
+    If not, a new node is added to the WORM list, and displayed on the screen.
+    If the worm has run into some food, the node at the back of the list is left alone, so the worm becomes one node longer every time food is collected. Otherwise, the first worm node is deleted, to keep the moving worm at the same length.
+    One point is gained every time the worm moves (to reward the player for simply not hitting anything), and ten points are gained for eating some wormfood.
+
+While this signal handling is happening in the background, the main program calls getch() to get input from the player. If any of the direction keys are pressed, the global direction variable is updated. The actual change in direction will occur the next time the worm moves, i.e. when SIGALRM is next received.
+Curses
+
+As usual, ncurses is initialised at the start, and then cleaned up again whenever the game ends. The box() function is used to make the screen border, and addch() is used to display the worm. When deleting previous WORM nodes, addch() is used to simply output a space character over the top of the previous nodes, to remove them.
+
+When placing a new piece of food, the game needs to know how many rows and columns the terminal has, in order that food should not be placed outside the game arena. To do this, ioctl() is used, specifying TIOCGWINSZ as the request to get the terminal size.
+Signal handling
+
+Using ncurses presents us with a problem when the user quits the game other than through the normal route (i.e. by hitting 'q'). For instance, if the user hits CTRL-C to abort the program, and we do nothing, then ncurses will not clean up the terminal after itself, and the terminal may then be garbled.
+
+To avoid this, we catch SIGTERM and SIGINT. When these signals are received, we clean up ncurses nicely, and then quit as normal.
+
+A similiar thing would have to be implemented when the game is temporarily stopped, then restarted (e.g. by hitting CTRL-Z). We would have to clean up ncurses when SIGTSTP is received, and reinitialise it and redraw the screen when SIGCONT is subsequently received. However, for simplicity, in this game we simply ignore SIGTSTP signals, effectively disabling CTRL-Z.
+Usage
+
+There are no command line arguments. Simply type ./worms or whatever your OS requires to run the game.
+
